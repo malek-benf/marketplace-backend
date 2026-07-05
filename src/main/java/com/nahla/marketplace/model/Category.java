@@ -4,9 +4,12 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.Date;
+
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Document(collection = "categories")
 public class Category {
 
@@ -14,4 +17,22 @@ public class Category {
     private String id;
 
     private String name;
+    private String nameAr;
+    private String slug;
+    private String description;
+    private String icon;
+    private String image;
+    private String parentCategoryId;
+
+    @Builder.Default
+    private Integer sortOrder = 0;
+
+    @Builder.Default
+    private Boolean active = true;
+
+    @Builder.Default
+    private Date createdAt = new Date();
+
+    @Builder.Default
+    private Date updatedAt = new Date();
 }
