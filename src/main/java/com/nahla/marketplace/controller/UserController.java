@@ -1,103 +1,55 @@
 package com.nahla.marketplace.controller;
 
-import com.nahla.marketplace.model.User;
-import com.nahla.marketplace.repository.UserRepository;
+import com.nahla.marketplace.dto.request.UserCreateRequest;
+import com.nahla.marketplace.dto.request.UserUpdateRequest;
+import com.nahla.marketplace.dto.response.ApiResponse;
+import com.nahla.marketplace.dto.response.CountedListResponse;
+import com.nahla.marketplace.dto.response.MessageResponse;
+import com.nahla.marketplace.dto.response.UserResponse;
+import com.nahla.marketplace.dto.response.UserStatsResponse;
+import com.nahla.marketplace.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.*;
 
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin
 public class UserController {
 
-    @Autowired
-    private UserRepository repo;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping
-    public Map<String, Object> getAll() {
-        List<User> users = repo.findAll();
-        return Map.of("count", users.size(), "data", users);
+    public CountedListResponse<UserResponse> getAll() {
+        return CountedListResponse.of(userService.getAll());
     }
 
     @GetMapping("/{id}")
-    public User getById(@PathVariable String id) {
-        return repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public ApiResponse<UserResponse> getById(@PathVariable String id) {
+        return ApiResponse.of(userService.getById(id));
     }
 
     @PostMapping
-    public User create(@Valid @RequestBody User user) {
-
-        user.setId(UUID.randomUUID().toString());
-        user.setCreatedAt(new Date());
-        user.setUpdatedAt(new Date());
-
-        if (user.getTrustScore() == null) user.setTrustScore(75.0);
-        if (user.getRating() == null) user.setRating(0.0);
-        if (user.getEnabled() == null) user.setEnabled(true);
-
-        return repo.save(user);
+    public ApiResponse<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
+        return ApiResponse.of(userService.create(request));
     }
 
     @PatchMapping("/{id}")
-    public User update(@PathVariable String id,
-                       @RequestBody Map<String, Object> body) {
-
-        User user = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (body.containsKey("name"))
-            user.setName((String) body.get("name"));
-
-        if (body.containsKey("email"))
-            user.setEmail((String) body.get("email"));
-
-        if (body.containsKey("phone"))
-            user.setPhone((String) body.get("phone"));
-
-        if (body.containsKey("whatsapp"))
-            user.setWhatsapp((String) body.get("whatsapp"));
-
-        if (body.containsKey("governorate"))
-            user.setGovernorate((String) body.get("governorate"));
-
-        if (body.containsKey("address"))
-            user.setAddress((String) body.get("address"));
-
-        if (body.containsKey("bio"))
-            user.setBio((String) body.get("bio"));
-
-        if (body.containsKey("avatarUrl"))
-            user.setAvatarUrl((String) body.get("avatarUrl"));
-
-        if (body.containsKey("coverImage"))
-            user.setCoverImage((String) body.get("coverImage"));
-
-        user.setUpdatedAt(new Date());
-
-        return repo.save(user);
+    public ApiResponse<UserResponse> update(@PathVariable String id, @RequestBody UserUpdateRequest request) {
+        return ApiResponse.of(userService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public Map<String, String> delete(@PathVariable String id) {
-        repo.deleteById(id);
-        return Map.of("message", "User deleted");
+    public MessageResponse delete(@PathVariable String id) {
+        userService.delete(id);
+        return new MessageResponse("User deleted");
     }
 
     @GetMapping("/{id}/stats")
-    public Map<String, Object> stats(@PathVariable String id) {
-
-        User u = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return Map.of(
-                "listings", u.getListingsCount(),
-                "followers", u.getFollowersCount(),
-                "rating", u.getRating(),
-                "trustScore", u.getTrustScore()
-        );
+    public ApiResponse<UserStatsResponse> stats(@PathVariable String id) {
+        return ApiResponse.of(userService.getStats(id));
     }
 }

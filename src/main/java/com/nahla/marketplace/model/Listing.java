@@ -39,7 +39,6 @@ public class Listing {
 
     @NotBlank(message = "Phone is required")
     private String phone;
-    private String whatsapp;
 
     private String categoryId;
 

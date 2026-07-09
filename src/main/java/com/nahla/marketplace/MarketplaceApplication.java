@@ -1,6 +1,6 @@
 package com.nahla.marketplace;
 
-import com.nahla.marketplace.controller.CategoryController;
+import com.nahla.marketplace.service.CategoryService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,7 +14,7 @@ public class MarketplaceApplication {
 	}
 
 	@Bean
-	CommandLineRunner seedOnStartup(CategoryController categoryController) {
-		return args -> categoryController.seedCategories();
+	CommandLineRunner seedOnStartup(CategoryService categoryService) {
+		return args -> categoryService.seedDefaultsIfEmpty();
 	}
 }
