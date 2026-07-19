@@ -9,6 +9,7 @@ import com.nahla.marketplace.dto.response.PagedResponse;
 import com.nahla.marketplace.dto.response.SellerSummaryResponse;
 import com.nahla.marketplace.exception.ResourceNotFoundException;
 import com.nahla.marketplace.model.Listing;
+import com.nahla.marketplace.model.User;
 import com.nahla.marketplace.repository.ListingRepository;
 import com.nahla.marketplace.repository.UserRepository;
 import org.springframework.data.domain.Sort;
@@ -71,7 +72,10 @@ public class ListingService {
         return new ListingDetailResponse(ListingResponse.from(listing), seller);
     }
 
-    public ListingResponse create(ListingCreateRequest request) {
+    public ListingResponse create(ListingCreateRequest request, String sellerPhone) {
+        User seller = userRepository.findByPhone(sellerPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", sellerPhone));
+
         Date now = new Date();
 
         Listing listing = Listing.builder()
@@ -79,8 +83,8 @@ public class ListingService {
                 .description(request.description())
                 .price(request.price())
                 .currency(StringUtils.hasText(request.currency()) ? request.currency() : "TND")
-                .sellerId(request.sellerId())
-                .sellerName(request.sellerName())
+                .sellerId(seller.getId())
+                .sellerName(seller.getName())
                 .phone(request.phone())
                 .categoryId(request.categoryId())
                 .category(request.category())
@@ -113,8 +117,9 @@ public class ListingService {
         return ListingResponse.from(saved);
     }
 
-    public ListingResponse update(String id, ListingUpdateRequest request) {
+    public ListingResponse update(String id, ListingUpdateRequest request, String requesterPhone) {
         Listing listing = findEntityOrThrow(id);
+        assertOwnerOrAdmin(listing, requesterPhone);
 
         if (request.title() != null) listing.setTitle(request.title());
         if (request.description() != null) listing.setDescription(request.description());
@@ -133,8 +138,10 @@ public class ListingService {
         return ListingResponse.from(listingRepository.save(listing));
     }
 
-    public ListingResponse softDelete(String id) {
+    public ListingResponse softDelete(String id, String requesterPhone) {
         Listing listing = findEntityOrThrow(id);
+        assertOwnerOrAdmin(listing, requesterPhone);
+
         listing.setStatus(STATUS_DELETED);
         listing.setUpdatedAt(new Date());
         return ListingResponse.from(listingRepository.save(listing));
@@ -195,8 +202,8 @@ public class ListingService {
     private List<Listing> filterByVerifiedSeller(List<Listing> listings) {
         return listings.stream()
                 .filter(listing -> userRepository.findById(listing.getSellerId())
-                        .map(user -> user.getVerified())
-                        .map(verified -> Boolean.TRUE.equals(verified))
+                        .map(User::getVerified)
+                        .map(Boolean.TRUE::equals)
                         .orElse(false))
                 .collect(Collectors.toList());
     }
@@ -217,5 +224,22 @@ public class ListingService {
     private Listing findEntityOrThrow(String id) {
         return listingRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("Listing", id));
+    }
+
+    /**
+     * Endpoint-level authentication only proves "someone is logged in" - it says
+     * nothing about whether they own this specific listing. This closes that gap:
+     * only the listing's own seller, or an admin, may update/delete it.
+     */
+    private void assertOwnerOrAdmin(Listing listing, String requesterPhone) {
+        User requester = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+
+        boolean isOwner = requester.getId().equals(listing.getSellerId());
+        boolean isAdmin = "admin".equalsIgnoreCase(requester.getRole());
+
+        if (!isOwner && !isAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("You can only modify your own listings.");
+        }
     }
 }

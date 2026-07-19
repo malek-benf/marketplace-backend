@@ -7,6 +7,7 @@ import com.nahla.marketplace.dto.response.CategoryResponse;
 import com.nahla.marketplace.dto.response.MessageResponse;
 import com.nahla.marketplace.service.CategoryService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,16 +33,19 @@ public class CategoryController {
         return ApiResponse.of(categoryService.getById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ApiResponse<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
         return ApiResponse.of(categoryService.create(request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ApiResponse<CategoryResponse> update(@PathVariable String id, @RequestBody CategoryUpdateRequest request) {
         return ApiResponse.of(categoryService.update(id, request));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public MessageResponse delete(@PathVariable String id) {
         categoryService.delete(id);

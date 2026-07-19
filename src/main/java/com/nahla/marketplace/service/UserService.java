@@ -8,6 +8,8 @@ import com.nahla.marketplace.exception.DuplicateResourceException;
 import com.nahla.marketplace.exception.ResourceNotFoundException;
 import com.nahla.marketplace.model.User;
 import com.nahla.marketplace.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -18,11 +20,14 @@ import java.util.UUID;
 public class UserService {
 
     private static final double DEFAULT_TRUST_SCORE = 75.0;
+    private static final String ADMIN_ROLE = "admin";
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<UserResponse> getAll() {
@@ -47,7 +52,7 @@ public class UserService {
                 .role(request.role() != null ? request.role() : "buyer")
                 .name(request.name())
                 .email(request.email())
-                .password(request.password())
+                .password(passwordEncoder.encode(request.password()))
                 .phone(request.phone())
                 .governorate(request.governorate())
                 .address(request.address())
@@ -65,7 +70,9 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    public UserResponse update(String id, UserUpdateRequest request) {
+    public UserResponse update(String id, UserUpdateRequest request, String requesterPhone) {
+        assertSelfOrAdmin(id, requesterPhone);
+
         User user = findEntityOrThrow(id);
 
         if (request.name() != null) user.setName(request.name());
@@ -82,7 +89,9 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    public void delete(String id) {
+    public void delete(String id, String requesterPhone) {
+        assertSelfOrAdmin(id, requesterPhone);
+
         if (!userRepository.existsById(id)) {
             throw ResourceNotFoundException.forEntity("User", id);
         }
@@ -102,5 +111,23 @@ public class UserService {
     private User findEntityOrThrow(String id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("User", id));
+    }
+
+    /**
+     * Endpoint-level @PreAuthorize only checks "is this user logged in / do they
+     * have this role" - it can't know whether the {id} in the URL belongs to the
+     * caller. This check closes that gap: a user may only modify their own
+     * profile, unless they're an admin.
+     */
+    private void assertSelfOrAdmin(String targetUserId, String requesterPhone) {
+        User requester = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+
+        boolean isSelf = requester.getId().equals(targetUserId);
+        boolean isAdmin = ADMIN_ROLE.equalsIgnoreCase(requester.getRole());
+
+        if (!isSelf && !isAdmin) {
+            throw new AccessDeniedException("You can only modify your own profile.");
+        }
     }
 }

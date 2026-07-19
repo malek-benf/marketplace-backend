@@ -9,8 +9,9 @@ import com.nahla.marketplace.dto.response.ListingResponse;
 import com.nahla.marketplace.dto.response.PagedResponse;
 import com.nahla.marketplace.service.ListingService;
 import jakarta.validation.Valid;
-
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 @RestController
 @RequestMapping("/api/listings")
 @CrossOrigin
@@ -49,17 +50,17 @@ public class ListingController {
     }
 
     @PostMapping
-    public ApiResponse<ListingResponse> create(@Valid @RequestBody ListingCreateRequest request) {
-        return ApiResponse.of(listingService.create(request));
+    public ApiResponse<ListingResponse> create(@Valid @RequestBody ListingCreateRequest request, Authentication authentication) {
+        return ApiResponse.of(listingService.create(request, authentication.getName()));
     }
 
     @PatchMapping("/{id}")
-    public ApiResponse<ListingResponse> update(@PathVariable String id, @Valid @RequestBody ListingUpdateRequest request) {
-        return ApiResponse.of(listingService.update(id, request));
+    public ApiResponse<ListingResponse> update(@PathVariable String id, @Valid @RequestBody ListingUpdateRequest request, Authentication authentication) {
+        return ApiResponse.of(listingService.update(id, request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<ListingResponse> delete(@PathVariable String id) {
-        return ApiResponse.of(listingService.softDelete(id));
+    public ApiResponse<ListingResponse> delete(@PathVariable String id, Authentication authentication) {
+        return ApiResponse.of(listingService.softDelete(id, authentication.getName()));
     }
 }

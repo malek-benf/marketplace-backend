@@ -1,6 +1,5 @@
 package com.nahla.marketplace.controller;
 
-import com.nahla.marketplace.dto.request.UserCreateRequest;
 import com.nahla.marketplace.dto.request.UserUpdateRequest;
 import com.nahla.marketplace.dto.response.ApiResponse;
 import com.nahla.marketplace.dto.response.CountedListResponse;
@@ -9,6 +8,8 @@ import com.nahla.marketplace.dto.response.UserResponse;
 import com.nahla.marketplace.dto.response.UserStatsResponse;
 import com.nahla.marketplace.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class UserController {
         this.userService = userService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public CountedListResponse<UserResponse> getAll() {
         return CountedListResponse.of(userService.getAll());
@@ -32,19 +34,14 @@ public class UserController {
         return ApiResponse.of(userService.getById(id));
     }
 
-    @PostMapping
-    public ApiResponse<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
-        return ApiResponse.of(userService.create(request));
-    }
-
     @PatchMapping("/{id}")
-    public ApiResponse<UserResponse> update(@PathVariable String id, @RequestBody UserUpdateRequest request) {
-        return ApiResponse.of(userService.update(id, request));
+    public ApiResponse<UserResponse> update(@PathVariable String id, @RequestBody UserUpdateRequest request, Authentication authentication) {
+        return ApiResponse.of(userService.update(id, request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public MessageResponse delete(@PathVariable String id) {
-        userService.delete(id);
+    public MessageResponse delete(@PathVariable String id, Authentication authentication) {
+        userService.delete(id, authentication.getName());
         return new MessageResponse("User deleted");
     }
 

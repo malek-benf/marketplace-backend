@@ -21,10 +21,6 @@ public record ListingCreateRequest(
 
         String currency,
 
-        @NotBlank(message = "Seller id is required")
-        String sellerId,
-        String sellerName,
-
         @NotBlank(message = "Phone is required")
         String phone,
 
