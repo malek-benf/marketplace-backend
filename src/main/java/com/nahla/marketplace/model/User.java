@@ -31,7 +31,6 @@ public class User {
     @Indexed(unique = true)
     @NotBlank(message = "Phone is required")
     private String phone;
-    private String whatsapp;
 
     private String governorate;
     private String address;
