@@ -1,27 +1,66 @@
 package com.nahla.marketplace.controller;
 
-import com.nahla.marketplace.model.Listing;
+import com.nahla.marketplace.dto.request.ListingCreateRequest;
+import com.nahla.marketplace.dto.request.ListingSearchRequest;
+import com.nahla.marketplace.dto.request.ListingUpdateRequest;
+import com.nahla.marketplace.dto.response.ApiResponse;
+import com.nahla.marketplace.dto.response.ListingDetailResponse;
+import com.nahla.marketplace.dto.response.ListingResponse;
+import com.nahla.marketplace.dto.response.PagedResponse;
 import com.nahla.marketplace.service.ListingService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/listings")
+@RequestMapping("/api/listings")
 @CrossOrigin
 public class ListingController {
 
-    @Autowired
-    private ListingService service;
+    private final ListingService listingService;
+
+    public ListingController(ListingService listingService) {
+        this.listingService = listingService;
+    }
 
     @GetMapping
-    public List<Listing> getAll() {
-        return service.getAll();
+    public PagedResponse<ListingResponse> getAll(
+            @RequestParam(value = "q", required = false) String keyword,
+            @RequestParam(value = "governorate", required = false) String governorate,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "minPrice", required = false) Double minPrice,
+            @RequestParam(value = "maxPrice", required = false) Double maxPrice,
+            @RequestParam(value = "condition", required = false) String condition,
+            @RequestParam(value = "source", required = false) String source,
+            @RequestParam(value = "verified", defaultValue = "false") boolean verifiedOnly,
+            @RequestParam(value = "sort", defaultValue = "newest") String sortBy,
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "offset", defaultValue = "0") int offset
+    ) {
+        ListingSearchRequest search = new ListingSearchRequest(
+                keyword, governorate, category, minPrice, maxPrice,
+                condition, source, verifiedOnly, sortBy, limit, offset
+        );
+        return listingService.search(search);
+    }
+
+    @GetMapping("/{id}")
+    public ListingDetailResponse getById(@PathVariable String id) {
+        return listingService.getByIdAndRegisterView(id);
     }
 
     @PostMapping
-    public Listing create(@RequestBody Listing listing) {
-        return service.create(listing);
+    public ApiResponse<ListingResponse> create(@Valid @RequestBody ListingCreateRequest request, Authentication authentication) {
+        return ApiResponse.of(listingService.create(request, authentication.getName()));
+    }
+
+    @PatchMapping("/{id}")
+    public ApiResponse<ListingResponse> update(@PathVariable String id, @Valid @RequestBody ListingUpdateRequest request, Authentication authentication) {
+        return ApiResponse.of(listingService.update(id, request, authentication.getName()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<ListingResponse> delete(@PathVariable String id, Authentication authentication) {
+        return ApiResponse.of(listingService.softDelete(id, authentication.getName()));
     }
 }
