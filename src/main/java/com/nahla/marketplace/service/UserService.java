@@ -1,5 +1,6 @@
 package com.nahla.marketplace.service;
 
+import com.nahla.marketplace.dto.request.ChangePasswordRequest;
 import com.nahla.marketplace.dto.request.UserCreateRequest;
 import com.nahla.marketplace.dto.request.UserUpdateRequest;
 import com.nahla.marketplace.dto.response.UserResponse;
@@ -9,6 +10,7 @@ import com.nahla.marketplace.exception.ResourceNotFoundException;
 import com.nahla.marketplace.model.User;
 import com.nahla.marketplace.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -96,6 +98,20 @@ public class UserService {
             throw ResourceNotFoundException.forEntity("User", id);
         }
         userRepository.deleteById(id);
+    }
+
+    public void changePassword(String id, ChangePasswordRequest request, String requesterPhone) {
+        assertSelfOrAdmin(id, requesterPhone);
+
+        User user = findEntityOrThrow(id);
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Current password is incorrect.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setUpdatedAt(new Date());
+        userRepository.save(user);
     }
 
     public UserStatsResponse getStats(String id) {

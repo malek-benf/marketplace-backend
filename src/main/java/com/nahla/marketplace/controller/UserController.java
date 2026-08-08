@@ -1,5 +1,6 @@
 package com.nahla.marketplace.controller;
 
+import com.nahla.marketplace.dto.request.ChangePasswordRequest;
 import com.nahla.marketplace.dto.request.UserUpdateRequest;
 import com.nahla.marketplace.dto.response.ApiResponse;
 import com.nahla.marketplace.dto.response.CountedListResponse;
@@ -48,5 +49,15 @@ public class UserController {
     @GetMapping("/{id}/stats")
     public ApiResponse<UserStatsResponse> stats(@PathVariable String id) {
         return ApiResponse.of(userService.getStats(id));
+    }
+
+    @PatchMapping("/{id}/password")
+    public MessageResponse changePassword(
+            @PathVariable String id,
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication
+    ) {
+        userService.changePassword(id, request, authentication.getName());
+        return new MessageResponse("Password changed successfully");
     }
 }

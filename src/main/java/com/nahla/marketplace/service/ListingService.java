@@ -20,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -45,16 +47,28 @@ public class ListingService {
     public PagedResponse<ListingResponse> search(ListingSearchRequest search) {
         Query query = buildSearchQuery(search);
 
-        long total = mongoTemplate.count(query, Listing.class);
+        // If verifiedOnly, narrow the query to only listings whose seller is verified.
+        // This must happen BEFORE count() and pagination so both are accurate.
+        if (search.verifiedOnly()) {
+            Set<String> verifiedSellerIds = getVerifiedSellerIds();
+            if (verifiedSellerIds.isEmpty()) {
+                return new PagedResponse<>(List.of(), 0, search.limit(), search.offset());
+            }
+            query.addCriteria(Criteria.where("sellerId").in(verifiedSellerIds));
+        }
+
+        // Use a separate query object for count so that adding sort/skip/limit
+        // to the main query does not affect the total count.
+        Query countQuery = new Query();
+        countQuery.addCriteria(query.getQueryObject() != null
+                ? new Criteria().andOperator(Criteria.where("_id").exists(true))
+                : Criteria.where("_id").exists(true));
+        long total = mongoTemplate.count(Query.of(query).limit(0).skip(0), Listing.class);
 
         query.with(resolveSort(search.sortBy()));
         query.skip(search.offset()).limit(search.limit());
 
         List<Listing> results = mongoTemplate.find(query, Listing.class);
-
-        if (search.verifiedOnly()) {
-            results = filterByVerifiedSeller(results);
-        }
 
         return new PagedResponse<>(ListingResponse.fromAll(results), total, search.limit(), search.offset());
     }
@@ -199,13 +213,17 @@ public class ListingService {
         };
     }
 
-    private List<Listing> filterByVerifiedSeller(List<Listing> listings) {
-        return listings.stream()
-                .filter(listing -> userRepository.findById(listing.getSellerId())
-                        .map(User::getVerified)
-                        .map(Boolean.TRUE::equals)
-                        .orElse(false))
-                .collect(Collectors.toList());
+    /**
+     * Fetches all verified seller IDs in a single DB query.
+     * Used to filter listings by verified sellers at query-time (before pagination),
+     * avoiding the N+1 problem of the old in-memory filterByVerifiedSeller approach.
+     */
+    private Set<String> getVerifiedSellerIds() {
+        Query verifiedQuery = new Query(Criteria.where("verified").is(true));
+        return new HashSet<>(mongoTemplate.find(verifiedQuery, User.class)
+                .stream()
+                .map(User::getId)
+                .collect(Collectors.toSet()));
     }
 
     private void incrementSellerListingsCount(String sellerId, Date now) {
