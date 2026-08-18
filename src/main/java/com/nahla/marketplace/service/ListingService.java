@@ -131,24 +131,22 @@ public class ListingService {
         return ListingResponse.from(saved);
     }
 
-    public ListingResponse update(String id, ListingUpdateRequest request, String requesterPhone) {
+        public ListingResponse update(String id, ListingUpdateRequest request, String requesterPhone) {
         Listing listing = findEntityOrThrow(id);
         assertOwnerOrAdmin(listing, requesterPhone);
 
+        // Reject price updates if the item is already sold
+        if (request.price() != null) {
+            if ("sold".equalsIgnoreCase(listing.getStatus())) {
+                throw new IllegalStateException("Cannot update the price of a sold item.");
+            }
+            listing.setPrice(request.price());
+        }
         if (request.title() != null) listing.setTitle(request.title());
         if (request.description() != null) listing.setDescription(request.description());
-        if (request.price() != null) listing.setPrice(request.price());
         if (request.status() != null) listing.setStatus(request.status());
-        if (request.phone() != null) listing.setPhone(request.phone());
-        if (request.condition() != null) listing.setCondition(request.condition());
-        if (request.location() != null) listing.setLocation(request.location());
-        if (request.city() != null) listing.setCity(request.city());
-        if (request.stock() != null) listing.setStock(request.stock());
-        if (request.images() != null) listing.setImages(request.images());
-        if (request.tags() != null) listing.setTags(request.tags());
 
         listing.setUpdatedAt(new Date());
-
         return ListingResponse.from(listingRepository.save(listing));
     }
 
@@ -213,11 +211,6 @@ public class ListingService {
         };
     }
 
-    /**
-     * Fetches all verified seller IDs in a single DB query.
-     * Used to filter listings by verified sellers at query-time (before pagination),
-     * avoiding the N+1 problem of the old in-memory filterByVerifiedSeller approach.
-     */
     private Set<String> getVerifiedSellerIds() {
         Query verifiedQuery = new Query(Criteria.where("verified").is(true));
         return new HashSet<>(mongoTemplate.find(verifiedQuery, User.class)

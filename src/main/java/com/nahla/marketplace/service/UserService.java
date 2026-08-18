@@ -128,13 +128,29 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("User", id));
     }
+        public void addFcmToken(String requesterPhone, String token) {
+        User user = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+        
+        if (user.getFcmTokens() == null) {
+            user.setFcmTokens(new java.util.ArrayList<>());
+        }
+        
+        if (!user.getFcmTokens().contains(token)) {
+            user.getFcmTokens().add(token);
+            userRepository.save(user);
+        }
+    }
 
-    /**
-     * Endpoint-level @PreAuthorize only checks "is this user logged in / do they
-     * have this role" - it can't know whether the {id} in the URL belongs to the
-     * caller. This check closes that gap: a user may only modify their own
-     * profile, unless they're an admin.
-     */
+    public void removeFcmToken(String requesterPhone, String token) {
+        User user = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+                
+        if (user.getFcmTokens() != null && user.getFcmTokens().contains(token)) {
+            user.getFcmTokens().remove(token);
+            userRepository.save(user);
+        }
+    } 
     private void assertSelfOrAdmin(String targetUserId, String requesterPhone) {
         User requester = userRepository.findByPhone(requesterPhone)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));

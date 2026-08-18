@@ -7,7 +7,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -34,53 +36,41 @@ public class User {
 
     private String governorate;
     private String address;
-
     private String bio;
-
     private String avatarUrl;
     private String coverImage;
 
     @Builder.Default
     private Double trustScore = 75.0;
-
     @Builder.Default
     private Double rating = 0.0;
-
     @Builder.Default
     private Integer totalReviews = 0;
-
     @Builder.Default
     private Double responseRate = 0.0;
-
     @Builder.Default
     private Integer listingsCount = 0;
-
     @Builder.Default
     private Integer followersCount = 0;
-
     @Builder.Default
     private Integer followingCount = 0;
-
     @Builder.Default
     private Boolean verified = false;
-
     @Builder.Default
     private String verificationStatus = "pending";
-
     @Builder.Default
     private Boolean enabled = true;
-
     @Builder.Default
     private String preferredLanguage = "fr";
 
-    private String fcmToken;
+    // CHANGED TO SUPPORT BATCH/MULTIPLE DEVICES
+    @Builder.Default
+    private List<String> fcmTokens = new ArrayList<>();
 
     @Builder.Default
     private Date lastActiveAt = new Date();
-
     @Builder.Default
     private Date createdAt = new Date();
-
     @Builder.Default
     private Date updatedAt = new Date();
 }

@@ -60,4 +60,19 @@ public class UserController {
         userService.changePassword(id, request, authentication.getName());
         return new MessageResponse("Password changed successfully");
     }
+
+    // NEW ENDPOINTS FOR NOTIFICATIONS
+    @PostMapping("/fcm-token")
+    public MessageResponse registerFcmToken(@RequestBody java.util.Map<String, String> payload, Authentication authentication) {
+        userService.addFcmToken(authentication.getName(), payload.get("token"));
+        return new MessageResponse("Token registered");
+    }
+
+   @DeleteMapping("/fcm-token")
+   public MessageResponse removeFcmToken(
+        @RequestParam String token,  
+        Authentication authentication) {
+    userService.removeFcmToken(authentication.getName(), token);
+    return new MessageResponse("Token removed");
+}
 }
