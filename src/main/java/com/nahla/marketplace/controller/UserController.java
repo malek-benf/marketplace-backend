@@ -1,5 +1,6 @@
 package com.nahla.marketplace.controller;
 
+import com.nahla.marketplace.dto.request.ChangePasswordRequest;
 import com.nahla.marketplace.dto.request.UserUpdateRequest;
 import com.nahla.marketplace.dto.response.ApiResponse;
 import com.nahla.marketplace.dto.response.CountedListResponse;
@@ -49,4 +50,29 @@ public class UserController {
     public ApiResponse<UserStatsResponse> stats(@PathVariable String id) {
         return ApiResponse.of(userService.getStats(id));
     }
+
+    @PatchMapping("/{id}/password")
+    public MessageResponse changePassword(
+            @PathVariable String id,
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication
+    ) {
+        userService.changePassword(id, request, authentication.getName());
+        return new MessageResponse("Password changed successfully");
+    }
+
+    // NEW ENDPOINTS FOR NOTIFICATIONS
+    @PostMapping("/fcm-token")
+    public MessageResponse registerFcmToken(@RequestBody java.util.Map<String, String> payload, Authentication authentication) {
+        userService.addFcmToken(authentication.getName(), payload.get("token"));
+        return new MessageResponse("Token registered");
+    }
+
+   @DeleteMapping("/fcm-token")
+   public MessageResponse removeFcmToken(
+        @RequestParam String token,  
+        Authentication authentication) {
+    userService.removeFcmToken(authentication.getName(), token);
+    return new MessageResponse("Token removed");
+}
 }

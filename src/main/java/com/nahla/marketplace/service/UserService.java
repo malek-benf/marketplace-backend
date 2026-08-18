@@ -1,5 +1,6 @@
 package com.nahla.marketplace.service;
 
+import com.nahla.marketplace.dto.request.ChangePasswordRequest;
 import com.nahla.marketplace.dto.request.UserCreateRequest;
 import com.nahla.marketplace.dto.request.UserUpdateRequest;
 import com.nahla.marketplace.dto.response.UserResponse;
@@ -9,6 +10,7 @@ import com.nahla.marketplace.exception.ResourceNotFoundException;
 import com.nahla.marketplace.model.User;
 import com.nahla.marketplace.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -98,6 +100,20 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    public void changePassword(String id, ChangePasswordRequest request, String requesterPhone) {
+        assertSelfOrAdmin(id, requesterPhone);
+
+        User user = findEntityOrThrow(id);
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Current password is incorrect.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setUpdatedAt(new Date());
+        userRepository.save(user);
+    }
+
     public UserStatsResponse getStats(String id) {
         User user = findEntityOrThrow(id);
         return new UserStatsResponse(
@@ -112,13 +128,29 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("User", id));
     }
+        public void addFcmToken(String requesterPhone, String token) {
+        User user = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+        
+        if (user.getFcmTokens() == null) {
+            user.setFcmTokens(new java.util.ArrayList<>());
+        }
+        
+        if (!user.getFcmTokens().contains(token)) {
+            user.getFcmTokens().add(token);
+            userRepository.save(user);
+        }
+    }
 
-    /**
-     * Endpoint-level @PreAuthorize only checks "is this user logged in / do they
-     * have this role" - it can't know whether the {id} in the URL belongs to the
-     * caller. This check closes that gap: a user may only modify their own
-     * profile, unless they're an admin.
-     */
+    public void removeFcmToken(String requesterPhone, String token) {
+        User user = userRepository.findByPhone(requesterPhone)
+                .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
+                
+        if (user.getFcmTokens() != null && user.getFcmTokens().contains(token)) {
+            user.getFcmTokens().remove(token);
+            userRepository.save(user);
+        }
+    } 
     private void assertSelfOrAdmin(String targetUserId, String requesterPhone) {
         User requester = userRepository.findByPhone(requesterPhone)
                 .orElseThrow(() -> ResourceNotFoundException.forEntity("User", requesterPhone));
